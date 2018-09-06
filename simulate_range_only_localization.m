@@ -116,77 +116,93 @@ plot(rangesn{3}(:,2),'g-');hold on;
 
 %% relative positioning development
 posrNTU{1} = p1;
-% posrNTU{2} = p2;
-% posrNTU{3} = p3;
+posrNTU{2} = [0 0 0];
+posrNTU{3} = [0 0 0];
 
 kk = 1;
 k = 1;
 tralaterationNum = 100;
+
+doDLT = 0;
+doFineOpt = 0;
 while k < size(rangesn{1},1)
+    %% collect data
     ide = k + tralaterationNum;
-    
     if ide > size(rangesn{1},1)
         ide = size(rangesn{1},1);
         tralaterationNum = ide - k;
     end
     
-    %% compute 2
-    d0 = rangesn{1}(k,2);
-    cummOdom = zeros(tralaterationNum,2);
-    for j = 1:1:tralaterationNum
-%         if j == 1
-%             cummOdom(j,:) = [motions{2}(k+j-1,1),  motions{2}(k+j-1,2)];
-%         else
-%             cummOdom(j,:) = cummOdom(j-1,:) + [motions{2}(k+j-1,1),  motions{2}(k+j-1,2)];
-%         end
-        cummOdom(j,:) = sum(motions{2}(k:(k+j-1),:),1);
+    if doDLT == 0
+        doDLT = 1;
+        doFineOpt = 1;
+        %% compute 2
+        d0 = rangesn{1}(k,2);
+        cummOdom2 = zeros(tralaterationNum,2);
+        for j = 1:1:tralaterationNum
+            cummOdom2(j,:) = sum(motions{2}(k:(k+j-1),:),1);
+        end
+    
+        b = rangesn{1}(k+1:ide,2).^2 - repmat(d0,ide-k, 1).^2 - cummOdom2(:,1).^2 - cummOdom2(:,2).^2;
+        A = 2.*[cummOdom2(:,1) cummOdom2(:,2)];
+        xx2 = inv(A'*A)*A'*b;
+    
+        %% compute 3
+        d0 = rangesn{1}(k,3);
+        cummOdom3 = zeros(tralaterationNum,2);
+        for j = 1:1:tralaterationNum
+            cummOdom3(j,:) = sum(motions{3}(k:(k+j-1),:),1);
+        end
+    
+        b = rangesn{1}(k+1:ide,3).^2 - repmat(d0,ide-k, 1).^2 - cummOdom3(:,1).^2 - cummOdom3(:,2).^2;
+        A = 2.*[cummOdom3(:,1) cummOdom3(:,2)];
+        xx3 = inv(A'*A)*A'*b;
+    else
+        doFineOpt = 0;
+        xx2 = posrNTU{2}(end,1:2) + motions{2}(k,:);xx2 = xx2';
+        xx3 = posrNTU{3}(end,1:2) + motions{3}(k,:);xx3 = xx3';
+        cummOdom2 = zeros(tralaterationNum,2);
+        for j = 1:1:tralaterationNum
+            cummOdom2(j,:) = sum(motions{2}(k:(k+j-1),:),1);
+        end
+        cummOdom3 = zeros(tralaterationNum,2);
+        for j = 1:1:tralaterationNum
+            cummOdom3(j,:) = sum(motions{3}(k:(k+j-1),:),1);
+        end
     end
-    
-    b = rangesn{1}(k+1:ide,2).^2 - repmat(d0,ide-k, 1).^2 - cummOdom(:,1).^2 - cummOdom(:,2).^2;
-    A = 2.*[cummOdom(:,1) cummOdom(:,2)];
-    xx2 = inv(A'*A)*A'*b;
-    
-    %% compute 3
-    d0 = rangesn{1}(k,3);
-    cummOdom = zeros(tralaterationNum,2);
-    for j = 1:1:tralaterationNum
-%         if j == 1
-%             cummOdom(j,:) = [motions{3}(k+j-1,1),  motions{3}(k+j-1,2)];
-%         else
-%             cummOdom(j,:) = cummOdom(j-1,:) + [motions{3}(k+j-1,1),  motions{3}(k+j-1,2)];
-%         end
-        cummOdom(j,:) = sum(motions{3}(k:(k+j-1),:),1);
-    end
-    
-    b = rangesn{1}(k+1:ide,3).^2 - repmat(d0,ide-k, 1).^2 - cummOdom(:,1).^2 - cummOdom(:,2).^2;
-    A = 2.*[cummOdom(:,1) cummOdom(:,2)];
-    xx3 = inv(A'*A)*A'*b;
-    
-    posrNTU{2}(kk,:) = [xx2' 0];
-    posrNTU{3}(kk,:) = [xx3' 0];
-    
+        
     %% nonlinear optimization
     sols = [xx2;xx3];
-    cummOdom = zeros(tralaterationNum,2);
-    for j = 1:1:tralaterationNum
-        cummOdom(j,:) = sum(motions{2}(k:(k+j-1),:),1);
-    end
-    motionsopt{1} = cummOdom;
-    cummOdom = zeros(tralaterationNum,2);
-    for j = 1:1:tralaterationNum
-        cummOdom(j,:) = sum(motions{3}(k:(k+j-1),:),1);
-    end
-    motionsopt{2} = cummOdom;
+%     cummOdom = zeros(tralaterationNum,2);
+%     for j = 1:1:tralaterationNum
+%         cummOdom(j,:) = sum(motions{2}(k:(k+j-1),:),1);
+%     end
+    motionsopt{1} = cummOdom2;
+%     cummOdom = zeros(tralaterationNum,2);
+%     for j = 1:1:tralaterationNum
+%         cummOdom(j,:) = sum(motions{3}(k:(k+j-1),:),1);
+%     end
+    motionsopt{2} = cummOdom3;
     
     rangesopt = [rangesn{1}(k:ide,2);rangesn{1}(k:ide,3);rangesn{2}(k:ide,3)];
-    
-    sols = nonlinOpt(sols, motionsopt, rangesopt, tralaterationNum);
+    if doFineOpt == 1
+        sols = nonlinOpt(sols, motionsopt, rangesopt, tralaterationNum, 1e-10, 1e-10, 1000);
+    else
+        sols = nonlinOpt(sols, motionsopt, rangesopt, tralaterationNum, 1e-2, 1e-2, 100);
+    end
     xx2 = sols(1:2);
     xx3 = sols(3:4);
-    
     posrNTU{1}(kk+1,:) = [0 0 0];
     posrNTU{2}(kk+1,:) = [xx2' 0];
     posrNTU{3}(kk+1,:) = [xx3' 0];
+%     for ii = 1:1:tralaterationNum
+%         posrNTU{1}(kk+1,:) = [0 0 0];
+%         p = xx2' + cummOdom2(ii,1:2);
+%         posrNTU{2}(kk+1,:) = [p 0];
+%         p = xx3' + cummOdom3(ii,1:2);
+%         posrNTU{3}(kk+1,:) = [p 0];
+%         kk = kk + 1;
+%     end
     
     k = k + tralaterationNum;
     kk = kk + 1;
@@ -195,13 +211,16 @@ end
 
 figure
 plot(pos{1}(:,1),pos{1}(:,2),'r-');hold on;
-plot(posrNTU{1}(1,1),posrNTU{1}(1,2),'r+');hold on;plot(posrNTU{1}(2,1),posrNTU{1}(2,2),'r*');hold on;
+% plot(posrNTU{1}(1,1),posrNTU{1}(1,2),'r+');
+hold on;plot(posrNTU{1}(2,1),posrNTU{1}(2,2),'r*');hold on;
 
 plot(pos{2}(:,1),pos{2}(:,2),'g-');hold on;
-plot(posrNTU{2}(1,1),posrNTU{2}(1,2),'g+');hold on;plot(posrNTU{2}(2,1),posrNTU{2}(2,2),'g*');hold on;
+% plot(posrNTU{2}(1,1),posrNTU{2}(1,2),'g+');
+hold on;plot(posrNTU{2}(2,1),posrNTU{2}(2,2),'g*');hold on;
 
 plot(pos{3}(:,1),pos{3}(:,2),'b-');hold on;
-plot(posrNTU{3}(1,1),posrNTU{3}(1,2),'b+');hold on;plot(posrNTU{3}(2,1),posrNTU{3}(2,2),'b*');hold on;
+% plot(posrNTU{3}(1,1),posrNTU{3}(1,2),'b+');
+hold on;plot(posrNTU{3}(2,1),posrNTU{3}(2,2),'b*');hold on;
 
 %% now, we have the initialized position, we do EKF
 kk = size(posrNTU{2},1);
@@ -245,43 +264,42 @@ while k < size(rangesn{1},1)
 end
 
 figure
-plot(pos{2}(:,1),pos{2}(:,2),'g-');hold on;
+plot(pos{2}(:,1),pos{2}(:,2),'g-','LineWidth',2);hold on;
 hold on;plot(posrNTU{2}(2:end,1),posrNTU{2}(2:end,2),'g-o');hold on;
-
-plot(pos{3}(:,1),pos{3}(:,2),'b-');hold on;
+plot(pos{3}(:,1),pos{3}(:,2),'b-','LineWidth',2);hold on;
 hold on;plot(posrNTU{3}(2:end,1),posrNTU{3}(2:end,2),'b-o');hold on;
-
+legend('ground truth of drone 1','estimation of drone 1', 'ground truth of drone 2','estimation of drone 2');
+grid on;
+title('Simulation of range only relative localization');
 end
 
-function [sols Omega] = nonlinOpt(sols, motions, ranges, motionCnt)
+function [sols] = nonlinOpt(sols, motions, ranges, motionCnt, epsilon1, epsilon2, cnt)
     k = 0; v = 2; x = sols;
     J = calcJacobian(x, motions, motionCnt, ranges);
     f = evaluationf(x, motions, ranges, motionCnt);
     A = J'*J; g = J'*f;
     
-    if (max(g)<=1e-6) return; end
+    if (max(g)<=epsilon1) return; end
     
     miu = 1e-6 * max(diag(A));
     
     iter = 1;
     
-    while iter < 1000
+    while iter < cnt
         cost = f'*f;
         disp(strcat('iter:',num2str(iter),'; cost:',num2str(cost)));
         iter = iter + 1;
         hlm = (A+miu*eye(size(A,1)))\(-g);
-        if norm(hlm) <= 1e-10*(norm(x)+1e-6) break; end
+        if norm(hlm) <= epsilon2*(norm(x)+epsilon2) break; end
         xnew = x + hlm;
-        
         fnew = evaluationf(xnew, motions, ranges, motionCnt);
-        
         rho = (f'*f - fnew'*fnew) * 2 / (hlm'*(miu.*hlm-g));
         if rho > 0
             x = xnew;
             J = calcJacobian(x, motions, motionCnt, ranges);
             f = evaluationf(x, motions, ranges, motionCnt);
             A = J'*J; g = J'*f;
-            if (max(g)<=1e-10) break; end
+            if (max(g)<=epsilon1) break; end
             miu = miu * max(1/3,1-(2*rho-1)^3); v = 2;
         else
             miu = miu * v; v = v * 2;
