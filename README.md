@@ -10,3 +10,8 @@ similar graph slam in order to build the fingerprint map for bluetooth signal.
 
 However, I don't think this is the best way to do graph minimization.
 But some some scale problem can be modeled as graph minimization problem and solve with this method.
+
+demo:
+![](init.png)
+
+![](opt.png)
