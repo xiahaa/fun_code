@@ -21,7 +21,7 @@ function test_on_initialization_with_sdp
     plot(boders(num1*3+1:num1*4,1),boders(num1*3+1:num1*4,2),'r-','LineWidth',3);
 
     %% anchor
-    num_of_anchors = 20;
+    num_of_anchors = 5;
     pos_anchors = zeros(num_of_anchors,dim);
     for i = 1:num_of_anchors
         sx = rand()*(px-nx)+nx;
@@ -56,7 +56,7 @@ function test_on_initialization_with_sdp
     
     %% compute ranges
     ranges = zeros(num_of_nodes, num_of_anchors);
-    range_noise_var = 1;
+    range_noise_var = 1.0;
     for i = 1:num_of_nodes
         ranges(i,:) = sqrt((pos_anchors(:,1)-pos_nodes(i,1)).^2+(pos_anchors(:,2)-pos_nodes(i,2)).^2)';
         ranges(i,:) = ranges(i,:) + randn(1,numel(ranges(i,:))).*sqrt(range_noise_var);
@@ -107,42 +107,43 @@ function test_on_initialization_with_sdp
     figure(1);
     h3 = plot(pos_nodes_est3(:,1),pos_nodes_est3(:,2),'Marker','o','MarkerSize',10, 'Color', color(40,:));
     
+    xb = [-5,5];
+    yb = [-5,5];
+    
     pos_nodes_est4 = pos_nodes;
     for i = 1:num_of_nodes
         r = ranges(i,:)';
         tic
-        x0 = dlt(pos_anchors, r); 
-        x1 = solveByLevenbergMarquardt(pos_anchors, r, x0); 
+        xd0 = dlt(pos_anchors, r); 
+%         x1 = sdp(pos_anchors, r, xb, yb, x0); 
+        x1 = solveByLevenbergMarquardt(pos_anchors, r, xd0); 
         toc
         pos_nodes_est4(i,:) = x1';
     end
     figure(1);
-    h4 = plot(pos_nodes_est4(:,1),pos_nodes_est4(:,2),'Marker','+','MarkerSize',10, 'Color', color(100,:));
+    h4 = plot(pos_nodes_est4(:,1),pos_nodes_est4(:,2),'Marker','+','MarkerSize',20, 'Color', color(100,:));
     
-    xb = [-5,5];
-    yb = [-5,5];
     pos_nodes_est5 = pos_nodes;
     for i = 1:num_of_nodes
         r = ranges(i,:)';
-        x0 = dlt(pos_anchors, r); 
-        x1 = sdp(pos_anchors, r, xb, yb, x0); 
-%         x1 = solveByLevenbergMarquardt(pos_anchors, r, x0); 
-        pos_nodes_est5(i,:) = x1';
+%         x0 = dlt(pos_anchors, r); 
+        xs0 = sdp(pos_anchors, r, xb, yb, [0 0]'); 
+%         x1 = solveByLevenbergMarquardt(pos_anchors, r, xs0'); 
+        pos_nodes_est5(i,:) = xs0';
     end
     figure(1);
-    h5 = plot(pos_nodes_est5(:,1),pos_nodes_est5(:,2),'Marker','o','MarkerSize',10, 'Color', color(120,:));
+    h5 = plot(pos_nodes_est5(:,1),pos_nodes_est5(:,2),'Marker','o','MarkerSize',20, 'Color', color(120,:));
     
-    legend([h1,h2,h3,h4,h5],'SteepestDescent','GaussNewtom', 'LevenbergMarquardt','DLT+LM','SDP','Interpreter','latex');
+    legend([h1,h2,h3,h4,h5],'SteepestDescent','GaussNewtom', 'LevenbergMarquardt','DLT','SDP','Interpreter','latex');
    
-    
-    bx = linspace(-20,20,2000)';
-    by = linspace(-20,20,2000)';
+    bx = linspace(-20,20,1000)';
+    by = linspace(-20,20,1000)';
     
     F = zeros(numel(bx),numel(by));
     for i = 1:numel(by)
         ys = by(i);
         for j = 1:size(pos_anchors,1)
-            f = ranges(1,j).^2 - sqrt((pos_anchors(j,1)-bx(:)).^2+(pos_anchors(j,2)-repmat(ys,size(bx,1),size(bx,2))).^2).^2;
+            f = (ranges(1,j) - sqrt((pos_anchors(j,1)-bx(:)).^2+(pos_anchors(j,2)-repmat(ys,size(bx,1),size(bx,2))).^2));
             f2(:,j) = f.^2;
         end
         F(i,:) = sum(f2,2);
@@ -331,97 +332,30 @@ function x0 = sdp(pa, r, xb, yb, xinit)
     % calc A
     n1 = size(pa,1);
     A = zeros(5,5);
-%     for i = 1:n1
-%         di = r(i);
-%         xi = pa(i,1);yi = pa(i,2);
-%         %%
-%         a1 = di^4 - 2*di^2*xi^2 - 2*di^2*yi^2 + xi^4 + yi^4 + 2*xi^2*yi^2;
-%         a2 = 4*di^2*xi - 4*xi^3 - 4*xi*yi^2;
-%         a3 = 4*di^2*yi - 4*xi^2*yi - 4*yi^3;
-%         a4 = -2*di^2 + 6*xi^2 + 2*yi^2;
-%         a5 = -2*di^2 + 6*yi^2 + 2*xi^2;
-%         a6 = 8*xi*yi;
-%         a7 = -4*xi;
-%         a8 = -4*yi;
-%         a9 = -4*yi;
-%         a10 = -4*xi;
-%        
-%         A1 = [a1 a2/2 a4/3 a3/2 a5/3; ...
-%               a2/2 a4/3 a7/2 a6/2 a10/2; ...
-%               a4/3 a7/2 1 a9/2 1; ...
-%               a3/2 a6/2 a9/2 a5/3 a8/2; ...
-%               a5/3 a10/2 1 a8/2 1];
-%         
-%         A = A + A1;%[di^2-(xi^2+yi^2),2*xi,2*yi;0,-1,0;0,0,-1]
-%     end
-% %     A1 = [0 1 0 ;0 0 0;0 0 0];A2 = [0 -1 0;0 0 0;0 0 0];
-% %     A3 = [0 0 -1;0 0 0;0 0 0];A4 = [0 0 1;0 0 0;0 0 0];
-% %             trace(A1*X) <= xb(2);
-% %             trace(A2*X) <= -xb(1);
-% %             trace(A3*X) <= yb(2);
-% %             trace(A4*X) <= -yb(1);
-% 
-% %     cvx_solver mosek
-%     M = [A, zeros(5,1);zeros(1,5),0];
-%     cvx_begin
-%         variable X(5,5) symmetric 
-%         variable x(5)
-%         expression Z
-%         Z = [X, x; x', 1];
-%         minimize( trace(A*X) )
-%         subject to
-%             X(1,1) == 1
-%             X(1,3) >= 0
-%             X(1,5) >= 0
-%             X(2,2) >= 0
-%             X(3,3) >= 0
-%             X(3,5) >= 0
-%             X(4,4) >= 0
-%             X(5,5) >= 0
-%             x(1) == 1
-%             X(1,2) - x(2) == 0
-%             X(1,3) - x(3) == 0
-%             X(1,4) - x(4) == 0
-%             X(1,5) - x(5) == 0
-%             x(3) >= 0
-%             x(3) >= 0
-%             Z == semidefinite(6);
-%             
-%             X(1,2) >= xb(1)
-%             X(1,2) <= xb(2)
-%             X(1,4) >= yb(1)
-%             X(1,4) <= yb(2)
-%             X(1,3) <= xb(2)*xb(2)
-%             X(1,5) <= yb(2)*yb(2)
-% %             diag(X) >= x
-%     cvx_end
-%     lb = cvx_optval;
-%     X = (X+X')/2; % force symmetry
-
-
-    % try with gloptipoly
-    mset clear
-    mpol x y
-    C0 = 0;
-    for i = 1:n1
-        di = r(i);
-        xi = pa(i,1);yi = pa(i,2);
-        C0 = C0 + (-di^2+((x-xi)^2+(y-yi)^2))^2;
-%         C0 = C0 + di^4 - 2*di^2*x^2 + 4*di^2*x*xi - 2*di^2*xi^2 - 2*di^2*y^2 ...
-%             + 4*di^2*y*yi - 2*di^2*yi^2 + x^4 - 4*x^3*xi + 6*x^2*xi^2 + 2*x^2*y^2 ...
-%             - 4*x^2*y*yi + 2*x^2*yi^2 - 4*x*xi^3 - 4*x*xi*y^2 + 8*x*xi*y*yi - 4*x*xi*yi^2 ...
-%             + xi^4 + 2*xi^2*y^2 - 4*xi^2*y*yi + 2*xi^2*yi^2 + y^4 - 4*y^3*yi + 6*y^2*yi^2 - 4*y*yi^3 + yi^4;
-    end
-    K = [x>=xinit(1)+xb(1),x<=xinit(1)+xb(2),y>=xinit(2)+yb(1),y<=xinit(2)+yb(2)];
-    Prob = msdp(min(C0),K);
-    [status,obj] = msol(Prob);
-    if status == 1
-        xsol = meas;
-        x0 = double([x y]);
-    else
-        x0 = xinit;
-    end
+    dim = 2;
     
+    import mosek.fusion.*
+    M = Model('cqo1');
+%     e = M.variable('e', n1, Domain.unbounded());
+    c = M.variable('c', n1, Domain.greaterThan(0.0));
+    x = M.variable('x', dim, Domain.unbounded());
+    t = M.variable('t', 1, Domain.greaterThan(0.0));
+    % create the aliases
+    a1 = Expr.sub(Var.repeat(x.index(1),n1),pa(:,1));
+    b1 = Expr.sub(Var.repeat(x.index(2),n1),pa(:,2));
+    e = Expr.sub(r,c);
+%     d = Expr.mul(x.index(2),5);
+    M.constraint('c1',Expr.hstack(c,a1,b1),Domain.inQCone());
+    M.constraint('c2',Expr.hstack(t,Expr.constTerm(1, 1.0/2.0),Expr.transpose(e)),Domain.inRotatedQCone());
+    v1 = ones(n1,1);
+    M.objective("obj", ObjectiveSense.Minimize, t);
+    M.solve();
+    
+    disp(toString(M.getPrimalSolutionStatus));
+    disp(num2str(t.level()));
+    x0 = x.level();
+    x0 = x0';
+  
     %% randomization
 %     ndim = size(X,1);
 %     mu = zeros(ndim,1);
