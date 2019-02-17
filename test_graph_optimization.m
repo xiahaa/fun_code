@@ -30,7 +30,8 @@ function test_graph_optimization
     progress = 0;
     t = 0.9;
     iter = 1;
-    while converged ~= true
+    maxiter = 70;
+    while converged ~= true && iter <= maxiter
         disp(iter);
         iter = iter + 1;
         %% mem
