@@ -1,0 +1,22 @@
+20 1000 0.9 0.4 0.0 0.0 0.5
+500 100 Griewank
+4 10 600.0
+
+/*------Algorithm setting parameters: Total evaluation time = m*(T+1)------------*/
+NUMBER_OF_AGENTS: m
+MAXITER: T
+weight_up
+weight_low
+Cv
+Cl
+MAXV
+
+/*------Output setting parameters------------*/
+run_no
+Output step of generation
+results_file_prefix
+
+/*------problem setting parameters------------*/
+fun_type: 0-Shaffer f6, 1-Sphere, 2-Rosenbrock, 3-generalized Rastrigrin, 4-generalized Griewank
+DIMENSION
+MAXX

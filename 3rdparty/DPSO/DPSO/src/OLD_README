@@ -1,0 +1,23 @@
+This program is run under DOS environment.  To run it, under
+DOS prompt, type in
+	Pso  pso.run 
+then press the return key.
+
+The pso.run file specifies all information required to run 
+the program, like population size, maximum velocity, maximum 
+generations, result file name, number of runs for the same problem 
+with the same parameters selection, etc.
+
+Please contact Yuhui Shi at the address below if you have 
+any comments.
+
+Yuhui Shi
+Department of Electrical Engineering
+Purdue University at Indainapoli
+723 W. Michigan St., SL160
+Indianapolis, IN 46202
+USA
+
+shi@tech.iupui.edu
+http://www.engr.iupui.edu/~shi/pso.html
+Tel: 317-278-1682
